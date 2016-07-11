@@ -51,7 +51,10 @@ class Settings(object):
         return self.__extract(pwd)
 
     def sudo(self):
-        pwd = self.__profile['sudo']
+        try:
+            pwd = self.__confobj['system']['sudo']
+        except KeyError:
+            pwd = ''
         if not pwd:
             import getpass
             pwd = getpass.getpass('Enter sudo password:')

@@ -6,8 +6,6 @@
         username = string()
         password = string(default='')
 
-        sudo = string(default='')
-
         [[[subnets]]]
             ___many___ = boolean()
 
@@ -25,3 +23,7 @@
 [proxy]
     [[__many__]]
         http_proxy = string(default='')
+
+
+[system]
+    sudo = string(default='')

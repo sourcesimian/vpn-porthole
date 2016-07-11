@@ -18,11 +18,6 @@
         #   Ubuntu: http://manpages.ubuntu.com/manpages/wily/man1/secret-tool.1.html
         password = SHELL:~/path/to/password/script
 
-        # sudo: (optional) It can be configured the same as for password.
-        # vpn-porthole needs to make use of sudo privileges to setup and tear down
-        # subnets and DNS domains
-        sudo =
-
         # subnets: Add the IP address ranges that you wish to route into the VPN session
         [[[subnets]]]
             10.11.0.0/28 = True
@@ -59,3 +54,8 @@
         http_proxy = http://www-proxy.example.com:80
 
 
+[system]
+    # sudo: (optional) It can be configured the same as for password.
+    # vpn-porthole needs to make use of sudo privileges to setup and tear down
+    # subnets and DNS domains
+    sudo =
