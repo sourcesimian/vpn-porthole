@@ -1,0 +1,61 @@
+# This is a sample settings file for vpn-porthole, customise as you wish
+
+# Create as many session profiles as you like and name them as you wish
+# Here we have just one session called "sample"
+[session]
+    [[sample]]
+        vpn = 10.11.12.77
+
+        # username: Directly add VPN username here, or use the SHELL feature as for
+        # the password
+        username = joe
+
+        # password: (optional) You can directly add your password here,
+        # but that is not good security. If you leave it blank then you will be
+        # prompted when needed. You can also configure your password to be
+        # retrieved with a shell command. I like to store my passwords in a keyring:
+        #   OSX: https://joshtronic.com/2014/02/17/using-keyring-access-on-the-osx-commandline/
+        #   Ubuntu: http://manpages.ubuntu.com/manpages/wily/man1/secret-tool.1.html
+        password = SHELL:~/path/to/password/script
+
+        # sudo: (optional) It can be configured the same as for password.
+        # vpn-porthole needs to make use of sudo privileges to setup and tear down
+        # subnets and DNS domains
+        sudo =
+
+        # subnets: Add the IP address ranges that you wish to route into the VPN session
+        [[[subnets]]]
+            10.11.0.0/28 = True
+            10.12.13.0/24 = True
+
+        # domains: Add the DNS domains for which you wish to forward DNS lookups into the
+        # VPN Session
+        [[[domains]]]
+            foo.org = True
+
+        [[[custom]]]
+
+            # Additional command line options you wish to pass to open-connect
+            [[[[openconnect]]]]
+                1 = -v
+                2 = --foo bla fish
+
+            # Custom lines you wish to add to the docker file as system
+            [[[[system]]]]
+                1 = RUN echo foo
+                2 = RUN echo bar
+
+            # Custom lines you wish to add to the docker file as the user
+            [[[[user]]]]
+                1 = RUN echo fish
+                2 = RUN echo paste
+
+
+# If you are behind a HTTP Proxy then here you can setup named proxy profiles
+# Here one profile is defined called "work". This would typically be used as
+# $ vpnp sample build --proxy work
+[proxy]
+    [[work]]
+        http_proxy = http://www-proxy.example.com:80
+
+

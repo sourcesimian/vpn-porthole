@@ -1,0 +1,19 @@
+FROM debian
+
+%(proxy)s
+
+RUN apt-get update && apt-get install -y sudo openvpn openconnect iptables
+
+RUN apt-get update && apt-get install -y dnsmasq
+RUN echo -e "\\ninterface=eth0\\nuser=root\\n" >> /etc/dnsmasq.conf
+
+RUN groupadd --gid %(gid)s %(group)s || true &&\
+ useradd -ms /bin/bash %(user)s --uid %(uid)s --gid %(gid)s
+RUN echo "%(user)s ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/90-%(user)s
+
+%(custom_system)s
+
+USER %(user)s
+WORKDIR /home/%(user)s/
+
+%(custom_user)s

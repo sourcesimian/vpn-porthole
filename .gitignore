@@ -1,0 +1,14 @@
+tests/env.py
+*.pyc
+.idea
+.DS_Store
+.coverage
+_trial_temp*
+htmlcov/*
+*.egg-info
+log
+*/__pycache__/*
+virtualenv/
+dist/
+build/
+vpn_porthole.egg-info/
