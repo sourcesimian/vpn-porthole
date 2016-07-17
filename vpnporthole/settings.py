@@ -9,19 +9,10 @@ from vpnporthole.ip import IPv4Subnet
 
 class Settings(object):
     __proxy = None
+    __sudo_password = None
 
     def __init__(self, profile, config=None, proxy=None):
         self.__profile_name = profile
-        if config is None:
-            config = self.__default_settings_path()
-            if not os.path.isdir(os.path.dirname(config)):
-                os.makedirs(os.path.dirname(config))
-            if not os.path.isfile(config):
-                with open(config, 'w+b') as fh:
-                    fh.write(self.__default_settings_content())
-                print("* Configure vpn-porthole in: %s" % config)
-                exit(1)
-
         self.__confobj = self.__get_confobj(config)
         try:
             self.__profile = self.__confobj['session'][profile]
@@ -56,8 +47,11 @@ class Settings(object):
         except KeyError:
             pwd = ''
         if not pwd:
+            if self.__sudo_password is not None:
+                return self.__sudo_password
             import getpass
             pwd = getpass.getpass('Enter sudo password:')
+            self.__sudo_password = pwd
         return self.__extract(pwd)
 
     def custom_system(self):
@@ -110,6 +104,16 @@ class Settings(object):
 
     @classmethod
     def __get_confobj(cls, config):
+        if config is None:
+            config = cls.__default_settings_path()
+            if not os.path.isdir(os.path.dirname(config)):
+                os.makedirs(os.path.dirname(config))
+        if not os.path.isfile(config):
+            with open(config, 'w+b') as fh:
+                fh.write(cls.__default_settings_content())
+            print("* Configure vpn-porthole in: %s" % config)
+            exit(1)
+
         spec_lines = resource_stream("vpnporthole", "resources/settings.spec").readlines()
 
         try:

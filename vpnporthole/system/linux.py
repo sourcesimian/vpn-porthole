@@ -15,10 +15,11 @@ class SystemCalls(SystemCallsBase):
         self._shell(['sudo', 'ip', 'route', 'del', str(subnet)])
 
     def list_routes(self):
-        lines = self._shell(['sudo', 'ip', 'route', 'show', 'via', self._ip])
         subnets = []
-        for line in lines:
-            subnets.append(IPv4Subnet(line.decode('utf-8').split()[0]))
+        if self._ip:
+            lines = self._shell(['sudo', 'ip', 'route', 'show', 'via', self._ip])
+            for line in lines:
+                subnets.append(IPv4Subnet(line.split()[0]))
         return subnets
 
     def add_domain(self, domain):
@@ -63,5 +64,5 @@ class SystemCalls(SystemCallsBase):
         all_files = glob.glob('/etc/NetworkManager/dnsmasq.d/*')
         if all_files:
             for line in self._shell(['sudo', 'grep', '-l', self._tag] + all_files):
-                domains.append(os.path.basename(line.decode('utf-8').strip()))
+                domains.append(os.path.basename(line.strip()))
         return domains

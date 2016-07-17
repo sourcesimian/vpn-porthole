@@ -93,12 +93,21 @@ class SystemCallsBase(object):
 
         pe.timeout = 10
 
+        asked_sudo = False
         while True:
             i = pe.expect([self.__sudo_prompt, TIMEOUT, EOF])
             if i == 0:
+                if asked_sudo:
+                    pe.send(chr(3))
+                    pe.wait()
+                    sys.stderr.write('Sudo password was wrong\n')
+                    exit(3)
+                asked_sudo = True
                 pe.sendline(self.__cb_sudo())
                 continue
             break
+        while len(pe.logfile.lines) and not pe.logfile.lines[0].strip():
+            pe.logfile.lines = pe.logfile.lines[1:]
         return pe.logfile.lines
 
     def _popen(self, args, *vargs, **kwargs):
@@ -159,12 +168,14 @@ class Pexpect(pe_spawn):
         def write(self, b):
             st = b.decode("utf-8")
             for line in st.splitlines(True):
-                if line.startswith(self.__ignores):
+                ignore = line.startswith(self.__ignores)
+                if ignore:
                     self.ignore += 1
                 elif self.ignore > 0:
                     self.ignore -= 1
                     return
-                self.lines.append(line)
+                if not ignore:
+                    self.lines.append(line)
                 if self._stdout:
                     sys.stdout.write('%s' % line)
 

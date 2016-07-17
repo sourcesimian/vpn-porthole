@@ -26,5 +26,6 @@ setup(
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Programming Language :: Python :: 3',
-    ]
+    ],
+    platforms=[]
 )

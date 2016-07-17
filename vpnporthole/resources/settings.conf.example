@@ -1,10 +1,11 @@
-# This is a sample settings file for vpn-porthole, customise as you wish
+# This is a sample settings file for vpn-porthole
 
-# Create as many session profiles as you like and name them as you wish
-# Here we have just one session called "sample"
+# Create as many session profiles as you like, and name them as you wish.
+# Here we have just one session called "example"
 [session]
-    [[sample]]
-        vpn = 10.11.12.77
+    [[example]]
+        # vpn: the endpoint at which the VPN is contacted
+        vpn = vpn.example.com
 
         # username: Directly add VPN username here, or use the SHELL feature as for
         # the password
@@ -48,14 +49,14 @@
 
 # If you are behind a HTTP Proxy then here you can setup named proxy profiles
 # Here one profile is defined called "work". This would typically be used as
-# $ vpnp sample build --proxy work
+# $ vpnp --proxy work sample build
 [proxy]
     [[work]]
         http_proxy = http://www-proxy.example.com:80
 
 
 [system]
-    # sudo: (optional) It can be configured the same as for password.
+    # sudo: (optional) Can be configured the same as for password.
     # vpn-porthole needs to make use of sudo privileges to setup and tear down
     # subnets and DNS domains
     sudo =
