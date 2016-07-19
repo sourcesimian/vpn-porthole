@@ -40,5 +40,5 @@ Vpn-porthole writes domain DNS resolver setting to `/etc/NetworkManager/dnsmasq.
 
 ```
 $ sudo cat /etc/NetworkManager/dnsmasq.d/test.org
-server=/test.org/172.17.0.1  # vpnp_user_profile
+server=/test.org/172.17.0.1  # vpnp_user_example
 ```

@@ -13,11 +13,11 @@
             ___many___ = boolean()
 
         [[[custom]]]
-            [[[[openconnect]]]]
-                ___many___ = string()
             [[[[system]]]]
                 ___many___ = string()
             [[[[user]]]]
+                ___many___ = string()
+            [[[[openconnect]]]]
                 ___many___ = string()
 
 [proxy]

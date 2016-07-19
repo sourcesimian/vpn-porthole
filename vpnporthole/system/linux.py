@@ -29,35 +29,8 @@ class SystemCalls(SystemCallsBase):
             self._shell(['sudo', 'cp', temp.name, '/etc/NetworkManager/dnsmasq.d/%s' % domain])
             temp.close()
 
-        # /etc/NetworkManager/dnsmasq.d/foo
-        # server=/domain.intra/192.168.30.1
-
-        # sudo service network-manager restart
-
-        # echo "nameserver $container_ip  # $name" | sudo tee -a /etc/resolvconf/resolv.conf.d/head >/dev/null
-        # sudo sudo resolvconf -u
-        pass
-
-        # With dnsmasq:
-        # /etc/resolv.conf:
-        #
-        # nameserver 127.0.0.1
-        # nameserver 208.67.222.222
-        # nameserver 208.67.220.220
-
-        # /etc/dnsmasq.conf:
-        #
-        # server=/freenode.net/8.8.8.8
-        # server=/freenode.net/8.8.4.4
-
     def del_domain(self, domain):
         self._shell(['sudo', 'rm', '/etc/NetworkManager/dnsmasq.d/%s' % domain])
-
-        # if grep "$name" /etc/resolvconf/resolv.conf.d/head >/dev/null; then
-        #     sudo sed -i "/  # $name/d" /etc/resolvconf/resolv.conf.d/head
-        #     sudo sudo resolvconf -u
-        # fi
-        pass
 
     def list_domains(self):
         domains = []

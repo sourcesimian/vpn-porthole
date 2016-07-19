@@ -1,7 +1,7 @@
 # This is a sample settings file for vpn-porthole
 
 # Create as many session profiles as you like, and name them as you wish.
-# Here we have just one session called "example"
+# Below is just one session called "example".
 [session]
     [[example]]
         # vpn: the endpoint at which the VPN is contacted
@@ -27,32 +27,31 @@
         # domains: Add the DNS domains for which you wish to forward DNS lookups into the
         # VPN Session
         [[[domains]]]
-            foo.org = True
+            example.org = True
 
         [[[custom]]]
 
-            # Additional command line options you wish to pass to open-connect
+            # Custom lines you wish to add to the Dockerfile as system
+            [[[[system]]]]
+                1 = RUN apt-get update && apt-get install -y wget
+
+            # Custom lines you wish to add to the Dockerfile as user
+            [[[[user]]]]
+                1 = RUN wget http://www.example.com/csd-wrapper.sh -O csd-wrapper.sh && chmod +x csd-wrapper.sh
+
+            # Additional command line options to pass to openconnect
             [[[[openconnect]]]]
                 1 = -v
-                2 = --foo bla fish
-
-            # Custom lines you wish to add to the docker file as system
-            [[[[system]]]]
-                1 = RUN echo foo
-                2 = RUN echo bar
-
-            # Custom lines you wish to add to the docker file as the user
-            [[[[user]]]]
-                1 = RUN echo fish
-                2 = RUN echo paste
+                2 = --csd-user user
+                3 = --csd-wrapper ~/csd-wrapper.sh
 
 
 # If you are behind a HTTP Proxy then here you can setup named proxy profiles
-# Here one profile is defined called "work". This would typically be used as
-# $ vpnp --proxy work sample build
+# Below is an example profile called "work". The proxy would typically be used as e.g.:
+#   $ vpnp --proxy work build example
 [proxy]
     [[work]]
-        http_proxy = http://www-proxy.example.com:80
+        http_proxy = http://proxy.example.com:8080
 
 
 [system]

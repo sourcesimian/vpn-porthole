@@ -17,26 +17,26 @@ class Main(ArgParseTree):
 
 class Action(ArgParseTree):
     def args(self, parser):
-        parser.add_argument("profile", help='Selected profile in the settings "all" can be used')
+        parser.add_argument("session", help='Selected session in settings')
 
     def run(self, args):
-        if args.profile == 'all':
+        if args.session == 'all':
             profiles = Settings.list_profiles(args.settings)
             for name in sorted(profiles.keys()):
                 self.settings = Settings(name, args.settings, args.proxy)
                 image = Session(self.settings)
                 self.go(image, args)
         else:
-            self.settings = Settings(args.profile, args.settings, args.proxy)
+            self.settings = Settings(args.session, args.settings, args.proxy)
             image = Session(self.settings)
             return self.go(image, args)
 
 
 class Build(Action):
     """\
-    Build profile
+    Build session
 
-    Build the docker image for this profile
+    Build the docker image for this session
     """
     def go(self, image, args):
         return image.build()
@@ -44,9 +44,9 @@ class Build(Action):
 
 class Start(Action):
     """\
-    Start profile
+    Start session
 
-    Start the docker container for this profile, requires user to enter password none configured
+    Start the docker container for this session, requires user to enter password none configured
     """
     def go(self, image, args):
         try:
@@ -57,9 +57,9 @@ class Start(Action):
 
 class Stop(Action):
     """\
-    Stop profile
+    Stop session
 
-    Stop the docker container for this profile
+    Stop the docker container for this session
     """
     def go(self, image, args):
         return image.stop()
@@ -67,9 +67,9 @@ class Stop(Action):
 
 class Status(Action):
     """\
-    Purge profile
+    Session status
 
-    Determine if the docker container fo this image is running
+    Determine if the docker container for this image is running
     """
     def go(self, image, args):
         if image.status():
@@ -82,6 +82,8 @@ class Status(Action):
 
 class Shell(Action):
     """\
+    Shell into active session
+
     Open shell in Docker container
     """
     def go(self, image, args):
@@ -98,9 +100,9 @@ class Info(Action):
 
 class Rm(Action):
     """\
-    Purge profile
+    Purge session
 
-    Remove any running/stopped containers and images for this profile
+    Remove any running/stopped containers and images for this session
     """
     def go(self, image, args):
         return image.purge()
@@ -108,9 +110,9 @@ class Rm(Action):
 
 class Restart(Action):
     """\
-    Purge profile
+    Restart session
 
-    Remove any running/stopped containers and images for this profile
+    Restart Docker container for this session
     """
     def go(self, image, args):
         if image.status():
@@ -123,12 +125,12 @@ class Restart(Action):
 class RouteAction(Action):
     def args(self, parser):
         super(RouteAction, self).args(parser)
-        parser.add_argument('subnet')
+        parser.add_argument('subnet', help="IPv4 subnet to route into session, e.g.: 10.1.2.0/24")
 
 
 class AddRoute(RouteAction):
     """\
-    Add a route
+    Add route to session
     """
     name = 'add-route'
 
@@ -138,7 +140,7 @@ class AddRoute(RouteAction):
 
 class DelRoute(RouteAction):
     """\
-    Delete a route
+    Delete route from session
     """
     name = 'del-route'
 
@@ -154,7 +156,7 @@ class DomainAction(Action):
 
 class AddDomain(DomainAction):
     """\
-    Add a domain
+    Add DNS domain to session
     """
     name = 'add-domain'
 
@@ -164,7 +166,7 @@ class AddDomain(DomainAction):
 
 class DelDomain(DomainAction):
     """\
-    Delete a domain
+    Delete DNS domain from session
     """
     name = 'del-domain'
 
@@ -172,20 +174,31 @@ class DelDomain(DomainAction):
         return image.del_domain(args.domain)
 
 
+class Docs(ArgParseTree):
+    """\
+    vpn-porthole documentation
+    """
+    def run(self, args):
+        print("vpn-porthole documentation can be found at:")
+        print("  https://github.com/sourcesimian/vpn-porthole/blob/master/README.md")
+        return 0
+
+
 def main():
     m = Main()
+    Docs(m)
     Build(m)
     Start(m)
     Status(m)
     Stop(m)
     Restart(m)
-    Info(m)
-    Shell(m)
-    Rm(m)
     AddRoute(m)
     DelRoute(m)
     AddDomain(m)
     DelDomain(m)
+    Rm(m)
+    Info(m)
+    Shell(m)
 
     try:
         return m.main()
