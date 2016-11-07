@@ -54,6 +54,17 @@ class Settings(object):
             self.__sudo_password = pwd
         return self.__extract(pwd)
 
+    def custom_files(self):
+        from textwrap import dedent
+        ret = {}
+        for k, v in self.__profile['custom']['files'].iteritems():
+            if v.startswith((' ', '\n', '\t', '\\')):
+                ret[k] = dedent(v[v.find('\n') + 1:]).rstrip(' ')
+            else:
+                with open(os.path.expanduser(v), 'rt') as fh:
+                    ret[k] = fh.read()
+        return ret
+
     def custom_system(self):
         for key in sorted(self.__profile['custom']['system'].keys()):
             yield self.__profile['custom']['system'][key]

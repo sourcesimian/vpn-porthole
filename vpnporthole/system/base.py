@@ -166,7 +166,12 @@ class Pexpect(pe_spawn):
             self._stdout = stdout
 
         def write(self, b):
-            st = b.decode("utf-8")
+            try:
+                st = b.decode("utf-8", "replace")
+            except UnicodeDecodeError as e:
+                print("! except: UnicodeDecodeError: %s" % e)
+                st = '\r\n'
+
             for line in st.splitlines(True):
                 ignore = line.startswith(self.__ignores)
                 if ignore:
@@ -193,3 +198,4 @@ class Pexpect(pe_spawn):
         i = super(Pexpect, self).expect(pattern, **kwargs)
 
         return i - 2
+

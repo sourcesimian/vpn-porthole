@@ -2,9 +2,11 @@ FROM debian
 
 %(proxy)s
 
-RUN apt-get update && apt-get install -y sudo openvpn openconnect iptables
+RUN apt-get update &&\
+ apt-get install -y sudo openvpn openconnect iptables dnsmasq &&\
+ apt-get autoremove -y &&\
+ apt-get clean -y
 
-RUN apt-get update && apt-get install -y dnsmasq
 RUN echo -e "\\ninterface=eth0\\nuser=root\\n" >> /etc/dnsmasq.conf
 
 RUN groupadd --gid %(gid)s %(group)s || true &&\

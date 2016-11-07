@@ -1,7 +1,7 @@
 # This is a sample settings file for vpn-porthole
 
 # Create as many session profiles as you like, and name them as you wish.
-# Below is just one session called "example".
+# Here we have just one session called "example"
 [session]
     [[example]]
         # vpn: the endpoint at which the VPN is contacted
@@ -31,24 +31,44 @@
 
         [[[custom]]]
 
-            # Custom lines you wish to add to the Dockerfile as system
-            [[[[system]]]]
-                1 = RUN apt-get update && apt-get install -y wget
-
-            # Custom lines you wish to add to the Dockerfile as user
-            [[[[user]]]]
-                1 = RUN wget http://www.example.com/csd-wrapper.sh -O csd-wrapper.sh && chmod +x csd-wrapper.sh
-
-            # Additional command line options to pass to openconnect
+            # Additional command line options you wish to pass to open-connect
             [[[[openconnect]]]]
                 1 = -v
-                2 = --csd-user user
-                3 = --csd-wrapper ~/csd-wrapper.sh
+                2 = --foo bla fish
 
+            # Custom lines you wish to add to the Docker file as system
+            [[[[system]]]]
+                1 = RUN apt-get update && apt-get install -y wget expect && apt-get clean -y
+                2 = ADD setup.sh /home/user/
+                3 = ADD run.sh /home/user/
+
+            # Custom lines you wish to add to the Docker file as the user
+            [[[[user]]]]
+                1 = RUN sudo chmod ugo+x *.sh
+                2 = RUN ./setup.sh
+
+            # Custom files you wish to include in the Docker context by path
+            # from your filesystem (e.g.: install.sh) or by content (e.g.: setup.sh)
+            [[[[files]]]]
+                install.sh = ~/.config/vpn-porthole/example/install.sh
+
+                setup.sh = '''
+		    #!/bin/bash
+
+		    wget ...
+
+                    /usr/bin/expect <<EOF
+                    spawn ./install.sh
+                    expect {
+                     " Do you wish to continue (y/n)?"
+                    }
+                    send "y\r"
+                    EOF
+                '''
 
 # If you are behind a HTTP Proxy then here you can setup named proxy profiles
-# Below is an example profile called "work". The proxy would typically be used as e.g.:
-#   $ vpnp --proxy work build example
+# Here a profile called "work" is defined. Typically usage:
+#   $ vpnp --proxy work sample build
 [proxy]
     [[work]]
         http_proxy = http://proxy.example.com:8080
@@ -59,3 +79,4 @@
     # vpn-porthole needs to make use of sudo privileges to setup and tear down
     # subnets and DNS domains
     sudo =
+

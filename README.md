@@ -1,11 +1,18 @@
 # vpn-porthole
-Splice VPN access into your default network space. Without interrupting existing connections, or
-altering your default networking.
+Access one or more VPNs without interrupting existing connections, or altering your default networking.
+
+<aside class="notice">
+This utility is intended for people who have a a good understanding of networking.
+</aside>
 
 ## Installation
 You will need [Docker](https://docs.docker.com/engine/installation/) installed.
 ```
 pip3 install vpn-porthole
+```
+or if you wish to install the latest development version:
+```
+pip3 install https://github.com/sourcesimian/vpn-porthole/tarball/master#egg=vpn-porthole-dev --process-dependency-links
 ```
 
 ## Setup

@@ -19,6 +19,8 @@
                 ___many___ = string()
             [[[[openconnect]]]]
                 ___many___ = string()
+            [[[[files]]]]
+                ___many___ = string()
 
 [proxy]
     [[__many__]]

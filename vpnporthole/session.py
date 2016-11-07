@@ -55,18 +55,19 @@ class Session(object):
         ctx['custom_user'] = '\n'.join(self.__settings.custom_user())
 
         with TmpDir() as tmp:
+            for filename, content in self.__settings.custom_files().items():
+                 userfile = os.path.join(tmp.path, filename)
+                 if filename.endswith('.tmpl'):
+                     content = content % ctx
+                     userfile = userfile[:-5]
+                 with open(userfile, 'wt') as fh:
+                     fh.write(content)
+                 os.utime(userfile, (0, 0))
 
             Dockerfile = os.path.join(tmp.path, 'Dockerfile')
             with open(Dockerfile, 'w') as fh:
                 fh.write(Dockerfile_tmpl % ctx)
-
-            def add_script(tmpl, name):
-                script = os.path.join(tmp.path, name)
-                with open(script, 'w') as fh:
-                    fh.write(tmpl % ctx)
-
-                os.chmod(script, 0o744)
-                os.utime(script, (0, 0))
+            os.utime(Dockerfile, (0, 0))
 
             stream = self.__dc.build(tmp.path, tag=tag)
             import json
