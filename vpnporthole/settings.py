@@ -11,20 +11,34 @@ class Settings(object):
     __proxy = None
     __sudo_password = None
 
-    def __init__(self, profile, config=None, proxy=None):
-        self.__profile_name = profile
-        self.__confobj = self.__get_confobj(config)
+    def __init__(self, session, config=None, proxy=None):
+        self.__session_name = session
+        self.__settings = self.__get_settings(config)
         try:
-            self.__profile = self.__confobj['session'][profile]
+            self.__session = self.__settings['session'][session]
         except KeyError:
-            sys.stderr.write('! Profile "%s" not found\n' % profile)
+            sys.stderr.write('! Session "%s" not found\n' % session)
             exit(1)
         if proxy:
-            self.__proxy = self.__confobj['proxy'][proxy]
+            self.__proxy = self.__settings['proxy'][proxy]
 
     @property
-    def profile(self):
-        return self.__profile_name
+    def session(self):
+        return self.__session_name
+
+    @property
+    def docker_machine(self):
+        machine = self.__session['docker']['machine']
+        if machine:
+            return machine
+        machine = self.__settings['docker']['machine']
+        if machine:
+            return machine
+        return None
+
+    @property
+    def socks5_port(self):
+        return self.__session['socks5']['port']
 
     def proxy(self):
         if not self.__proxy:
@@ -32,10 +46,10 @@ class Settings(object):
         return self.__proxy['http_proxy']
 
     def username(self):
-        return self.__extract(self.__profile['username'])
+        return self.__extract(self.__session['username'])
 
     def password(self):
-        pwd = self.__profile['password']
+        pwd = self.__session['password']
         if not pwd:
             import getpass
             pwd = getpass.getpass('')
@@ -43,7 +57,7 @@ class Settings(object):
 
     def sudo(self):
         try:
-            pwd = self.__confobj['system']['sudo']
+            pwd = self.__settings['system']['sudo']
         except KeyError:
             pwd = ''
         if not pwd:
@@ -57,7 +71,7 @@ class Settings(object):
     def custom_files(self):
         from textwrap import dedent
         ret = {}
-        for k, v in self.__profile['custom']['files'].iteritems():
+        for k, v in self.__session['dockerfile']['files'].iteritems():
             if v.startswith((' ', '\n', '\t', '\\')):
                 ret[k] = dedent(v[v.find('\n') + 1:]).rstrip(' ')
             else:
@@ -66,17 +80,17 @@ class Settings(object):
         return ret
 
     def custom_system(self):
-        for key in sorted(self.__profile['custom']['system'].keys()):
-            yield self.__profile['custom']['system'][key]
+        for key in sorted(self.__session['dockerfile']['system'].keys()):
+            yield self.__session['dockerfile']['system'][key]
 
     def custom_user(self):
-        for key in sorted(self.__profile['custom']['user'].keys()):
-            yield self.__profile['custom']['user'][key]
+        for key in sorted(self.__session['dockerfile']['user'].keys()):
+            yield self.__session['dockerfile']['user'][key]
 
     def custom_openconnect(self):
         args = []
-        for key in sorted(self.__profile['custom']['openconnect'].keys()):
-            value = self.__profile['custom']['openconnect'][key]
+        for key in sorted(self.__session['openconnect'].keys()):
+            value = self.__session['openconnect'][key]
             args.extend(value.split(' ', 1))
         return args
 
@@ -87,58 +101,97 @@ class Settings(object):
         return value
 
     def vpn(self):
-        return self.__profile['vpn']
+        return self.__session['vpn']
 
     def subnets(self):
         return [IPv4Subnet(k)
-                for k, v in self.__profile['subnets'].items()
+                for k, v in self.__session['subnets'].items()
                 if v is True]
 
     def domains(self):
         return [k
-                for k, v in self.__profile['domains'].items()
+                for k, v in self.__session['domains'].items()
                 if v is True]
 
     @classmethod
-    def __default_settings_path(cls):
-        return os.path.expanduser('~/.config/vpn-porthole/settings.conf')
+    def __default_settings_root(cls):
+        return os.path.expanduser('~/.config/vpn-porthole')
 
     @classmethod
-    def __default_settings_content(cls):
-        return resource_stream("vpnporthole", "resources/settings.conf.example").read()
+    def list_sessions(cls, config_root):
+        settings = cls.__get_settings(config_root)
+        return {p: v for p, v in settings['session'].items()}
 
     @classmethod
-    def list_profiles(cls, config):
-        config = config or cls.__default_settings_path()
-        confobj = cls.__get_confobj(config)
-        return {p: v for p, v in confobj['session'].items()}
+    def __ensure_config_setup(cls):
+        root = cls.__default_settings_root()
+        if not os.path.exists(root):
+            os.makedirs(root)
+
+        settings = os.path.join(root, 'settings.conf')
+        if not os.path.exists(settings):
+            with open(settings, 'w+b') as fh:
+                content = resource_stream("vpnporthole", "resources/settings.conf.example").read()
+                fh.write(content)
+            print("* Wrote: %s" % settings)
+
+        root = os.path.join(root, 'sessions')
+        if not os.path.exists(root):
+            os.makedirs(root)
+
+            session = os.path.join(root, 'example.conf')
+            if not os.path.exists(session):
+                with open(session, 'w+b') as fh:
+                    content = resource_stream("vpnporthole", "resources/session.conf.example").read()
+                    fh.write(content)
+                print("* Wrote: %s" % session)
 
     @classmethod
-    def __get_confobj(cls, config):
-        if config is None:
-            config = cls.__default_settings_path()
-            if not os.path.isdir(os.path.dirname(config)):
-                os.makedirs(os.path.dirname(config))
-        if not os.path.isfile(config):
-            with open(config, 'w+b') as fh:
-                fh.write(cls.__default_settings_content())
-            print("* Configure vpn-porthole in: %s" % config)
-            exit(1)
+    def __get_settings(cls, config_root):
+        if config_root is None:
+            cls.__ensure_config_setup()
+        else:
+            if os.path.isfile(config_root):
+                config_root = os.path.dirname(config_root)
+        config_root = config_root or cls.__default_settings_root()
 
-        spec_lines = resource_stream("vpnporthole", "resources/settings.spec").readlines()
+        settings_file = os.path.join(config_root, 'settings.conf')
+        sessions_glob = os.path.join(config_root, 'sessions', '*.conf')
 
+        settings_spec_lines = resource_stream("vpnporthole", "resources/settings.spec").readlines()
+        session_spec_lines = resource_stream("vpnporthole", "resources/session.spec").readlines()
+
+        settings = cls.__load_configobj(settings_file, settings_spec_lines)
+        if not settings:
+            exit(3)
+
+        settings['session'] = {}
+
+        from glob import glob
+        session_to_file_map = {}
+        for session_file in glob(sessions_glob):
+            sessions = cls.__load_configobj(session_file, session_spec_lines)
+            if not settings:
+                exit(3)
+
+            for name, session in sessions['session'].iteritems():
+                if name in settings['session']:
+                    sys.stderr.write('! Duplicate session "%s" in: "%s" and "%s"\n' %
+                                     (name, session_file, session_to_file_map[name]))
+                    exit(3)
+                session_to_file_map[name] = session_file
+                settings['session'][name] = session
+
+        return settings
+
+    @classmethod
+    def __load_configobj(cls, config_file, spec_lines):
         try:
-            confobj = ConfigObj(config, configspec=spec_lines, raise_errors=True)
+            confobj = ConfigObj(config_file, configspec=spec_lines, raise_errors=True)
         except DuplicateError as e:
-            sys.stderr.write('Bad settings file: %s\n' % e)
-            exit(3)
+            sys.stderr.write('! Bad config file "%s": %s\n' % (config_file, e))
+            return None
 
-        if not cls.__validate_confobj(confobj):
-            exit(3)
-        return confobj
-
-    @classmethod
-    def __validate_confobj(cls, confobj):
         bad_values = []
         bad_keys = []
         result = confobj.validate(Validator())
@@ -158,16 +211,18 @@ class Settings(object):
                 bad_keys.append(list(path) + [key])
 
         if bad_keys:
-            sys.stderr.write('Unknown keys in settings file:\n')
+            sys.stderr.write('! Unknown keys in config file "%s":\n' % config_file)
             for key in bad_keys:
-                sys.stderr.write(' - /%s\n' % '/'.join(key))
+                sys.stderr.write('  - /%s\n' % '/'.join(key))
 
         if bad_values:
-            sys.stderr.write('Bad values in settings file:\n')
+            sys.stderr.write('! Bad values in settings file "%s":\n' % config_file)
             for key in bad_values:
                 value = confobj
                 for k in key:
                     value = value[k]
-                sys.stderr.write(' - /%s = %s\n' % ('/'.join(key), value))
+                sys.stderr.write('  - /%s = %s\n' % ('/'.join(key), value))
 
-        return not bad_keys and not bad_values
+        if bad_keys or bad_values:
+            return None
+        return confobj

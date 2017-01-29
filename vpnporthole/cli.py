@@ -16,20 +16,25 @@ class Main(ArgParseTree):
 
 
 class Action(ArgParseTree):
+    settings = None
+
     def args(self, parser):
-        parser.add_argument("session", help='Selected session in settings')
+        parser.add_argument("session", help='Session name or "all"')
 
     def run(self, args):
         if args.session == 'all':
-            profiles = Settings.list_profiles(args.settings)
-            for name in sorted(profiles.keys()):
+            sessions = Settings.list_sessions(args.settings)
+            for name in sorted(sessions.keys()):
                 self.settings = Settings(name, args.settings, args.proxy)
-                image = Session(self.settings)
-                self.go(image, args)
+                session = Session(self.settings)
+                self.go(session, args)
         else:
             self.settings = Settings(args.session, args.settings, args.proxy)
-            image = Session(self.settings)
-            return self.go(image, args)
+            session = Session(self.settings)
+            return self.go(session, args)
+
+    def go(self, session, args):
+        raise NotImplementedError()
 
 
 class Build(Action):
@@ -38,8 +43,8 @@ class Build(Action):
 
     Build the docker image for this session
     """
-    def go(self, image, args):
-        return image.build()
+    def go(self, session, args):
+        return session.build()
 
 
 class Start(Action):
@@ -48,9 +53,9 @@ class Start(Action):
 
     Start the docker container for this session, requires user to enter password none configured
     """
-    def go(self, image, args):
+    def go(self, session, args):
         try:
-            return image.start()
+            return session.start()
         except KeyboardInterrupt:
             return 1
 
@@ -61,8 +66,8 @@ class Stop(Action):
 
     Stop the docker container for this session
     """
-    def go(self, image, args):
-        return image.stop()
+    def go(self, session, args):
+        return session.stop()
 
 
 class Status(Action):
@@ -71,12 +76,13 @@ class Status(Action):
 
     Determine if the docker container for this image is running
     """
-    def go(self, image, args):
-        if image.status():
+    def go(self, session, args):
+        if session.status():
             status = 'RUNNING'
         else:
             status = 'STOPPED'
-        sys.stdout.write("%s %s %s@%s\n" % (status, self.settings.profile, self.settings.username(), self.settings.vpn()))
+        sys.stdout.write("%s %s %s@%s\n" % (status, self.settings.session,
+                                            self.settings.username(), self.settings.vpn()))
         return status == 'RUNNING'
 
 
@@ -86,26 +92,26 @@ class Shell(Action):
 
     Open shell in Docker container
     """
-    def go(self, image, args):
-        return image.shell()
+    def go(self, session, args):
+        return session.shell()
 
 
 class Info(Action):
     """\
-    Docker container info
+    Docker container info for session
     """
-    def go(self, image, args):
-        return image.info()
+    def go(self, session, args):
+        return session.info()
 
 
 class Rm(Action):
     """\
-    Purge session
+    Stop the session, and remove the docker container
 
     Remove any running/stopped containers and images for this session
     """
-    def go(self, image, args):
-        return image.purge()
+    def go(self, session, args):
+        return session.purge()
 
 
 class Restart(Action):
@@ -114,10 +120,10 @@ class Restart(Action):
 
     Restart Docker container for this session
     """
-    def go(self, image, args):
-        if image.status():
-            image.stop()
-            return image.start()
+    def go(self, session, args):
+        if session.status():
+            session.stop()
+            return session.start()
         sys.stderr.write("Not running!\n")
         return 1
 
@@ -134,8 +140,8 @@ class AddRoute(RouteAction):
     """
     name = 'add-route'
 
-    def go(self, image, args):
-        return image.add_route(args.subnet)
+    def go(self, session, args):
+        return session.add_route(args.subnet)
 
 
 class DelRoute(RouteAction):
@@ -144,8 +150,8 @@ class DelRoute(RouteAction):
     """
     name = 'del-route'
 
-    def go(self, image, args):
-        return image.del_route(args.subnet)
+    def go(self, session, args):
+        return session.del_route(args.subnet)
 
 
 class DomainAction(Action):
@@ -160,8 +166,8 @@ class AddDomain(DomainAction):
     """
     name = 'add-domain'
 
-    def go(self, image, args):
-        return image.add_domain(args.domain)
+    def go(self, session, args):
+        return session.add_domain(args.domain)
 
 
 class DelDomain(DomainAction):
@@ -170,8 +176,8 @@ class DelDomain(DomainAction):
     """
     name = 'del-domain'
 
-    def go(self, image, args):
-        return image.del_domain(args.domain)
+    def go(self, session, args):
+        return session.del_domain(args.domain)
 
 
 class Docs(ArgParseTree):
@@ -179,14 +185,19 @@ class Docs(ArgParseTree):
     vpn-porthole documentation
     """
     def run(self, args):
+        import pkg_resources
+        try:
+            tag = 'v' + pkg_resources.get_distribution('vpn-porthole').version
+        except pkg_resources.DistributionNotFound:
+            tag = 'master'
+
         print("vpn-porthole documentation can be found at:")
-        print("  https://github.com/sourcesimian/vpn-porthole/blob/master/README.md")
+        print("  https://github.com/sourcesimian/vpn-porthole/blob/%s/README.md" % tag)
         return 0
 
 
 def main():
     m = Main()
-    Docs(m)
     Build(m)
     Start(m)
     Status(m)
@@ -196,9 +207,10 @@ def main():
     DelRoute(m)
     AddDomain(m)
     DelDomain(m)
-    Rm(m)
     Info(m)
     Shell(m)
+    Rm(m)
+    Docs(m)
 
     try:
         return m.main()

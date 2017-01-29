@@ -15,14 +15,14 @@ class Session(object):
 
     def __init__(self, settings):
         self.__settings = settings
-        self.__dc = DockerClient.from_env()
-        self.__sc = SystemCalls(self._tag(), settings.sudo)
+        self.__sc = SystemCalls(self._tag(), self.__settings)
+        self.__dc = DockerClient.from_env(environment=self.__sc.get_docker_env())
 
     def _local_user(self):
         return os.environ['USER']
 
     def _tag(self):
-        return "vpnp_%s_%s" % (self._local_user(), self.__settings.profile)
+        return "vpnp_%s_%s" % (self._local_user(), self.__settings.session)
 
     def _prefix(self):
         return self._tag() + '_'
@@ -51,18 +51,32 @@ class Session(object):
 
         ctx['vpn'] = self.__settings.vpn()
 
+        ctx['optional_system'] = ''
+
+        if self.__settings.socks5_port:
+            from textwrap import dedent
+            install_ssh_client = dedent(
+                """\
+                RUN apt-get update &&\
+                 apt-get install -y openssh-client &&\
+                 apt-get autoremove -y &&\
+                 apt-get clean -y
+                """
+            )
+            ctx['optional_system'] += install_ssh_client
+
         ctx['custom_system'] = '\n'.join(self.__settings.custom_system())
         ctx['custom_user'] = '\n'.join(self.__settings.custom_user())
 
         with TmpDir() as tmp:
             for filename, content in self.__settings.custom_files().items():
-                 userfile = os.path.join(tmp.path, filename)
-                 if filename.endswith('.tmpl'):
-                     content = content % ctx
-                     userfile = userfile[:-5]
-                 with open(userfile, 'wt') as fh:
-                     fh.write(content)
-                 os.utime(userfile, (0, 0))
+                userfile = os.path.join(tmp.path, filename)
+                if filename.endswith('.tmpl'):
+                    content = content % ctx
+                    userfile = userfile[:-5]
+                with open(userfile, 'wt') as fh:
+                    fh.write(content)
+                os.utime(userfile, (0, 0))
 
             Dockerfile = os.path.join(tmp.path, 'Dockerfile')
             with open(Dockerfile, 'w') as fh:
@@ -132,10 +146,15 @@ class Session(object):
         self.__sc.container_ip(ip)
 
         args = ['/usr/bin/sudo', 'iptables', '-t', 'nat', '-A', 'POSTROUTING', '-o', 'tun1', '-j', 'MASQUERADE']
-        self.__sc.exec(self.__dc, self._container()['Id'], args)
+        self.__sc.docker_exec(self.__dc, self._container()['Id'], args)
 
         args = ['/usr/bin/sudo', '/etc/init.d/dnsmasq', 'start']
-        self.__sc.exec(self.__dc, self._container()['Id'], args)
+        self.__sc.docker_exec(self.__dc, self._container()['Id'], args)
+
+        if self.__settings.socks5_port:
+            args = ['/usr/bin/ssh', '-f', '-N', '-D',
+                    '0.0.0.0:%s' % self.__settings.socks5_port, 'localhost']
+            self.__sc.docker_exec(self.__dc, self._container()['Id'], args)
 
         print("- Container IP: %s" % ip)
 
@@ -246,16 +265,23 @@ class Session(object):
         self.__sc.docker_shell(container['Id'])
 
     def info(self):
+        for image in self._images():
+            print('Image: %s\t%s\t%.1f MB' % (image['RepoTags'][0],
+                                              image['Id'][7:19],
+                                              image['Size'] / 1024 / 1024,))
         ip = self._ip()
         if ip is None:
-            return 1
+            return 0
         self.__sc.container_ip(ip)
         container = self._container()
-        domains = self.__sc.list_domains()
-        subnets = self.__sc.list_routes()
+        print('Container: %s\t%s\t%s' % (container['Image'],
+                                         container['State'],
+                                         container['Id'][7:19],))
         if container:
             print('IP: %s' % ip)
+            subnets = self.__sc.list_routes()
             for subnet in subnets:
                 print('Route: %s' % subnet)
+            domains = self.__sc.list_domains()
             for domain in domains:
                 print('Domain: %s' % domain)

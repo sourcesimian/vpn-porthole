@@ -13,6 +13,7 @@ RUN groupadd --gid %(gid)s %(group)s || true &&\
  useradd -ms /bin/bash %(user)s --uid %(uid)s --gid %(gid)s
 RUN echo "%(user)s ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/90-%(user)s
 
+%(optional_system)s
 %(custom_system)s
 
 USER %(user)s

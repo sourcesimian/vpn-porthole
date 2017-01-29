@@ -10,9 +10,10 @@ class SystemCallsBase(object):
     __sudo_cache = None
     __sudo_prompt = 'SUDO PASSWORD: '
 
-    def __init__(self, tag, cb_sudo_password):
+    def __init__(self, tag, settings):
         self._tag = tag
-        self.__cb_sudo = cb_sudo_password
+        self._settings = settings
+        self.__cb_sudo = self._settings.sudo
 
     def container_ip(self, ip):
         self._ip = ip
@@ -66,7 +67,7 @@ class SystemCallsBase(object):
 
     def docker_shell(self, container_id):
         args = [self.docker_bin, 'exec', '-it', container_id, '/bin/bash']
-        p = self._popen(args)
+        p = self._popen(args, env=self.get_docker_env())
         p.wait()
 
     def docker_run_expect(self, image, args):
@@ -75,7 +76,7 @@ class SystemCallsBase(object):
         all_args.extend(args)
 
         self.__print_cmd(all_args)
-        return Pexpect(self.__args_to_string(all_args))
+        return Pexpect(self.__args_to_string(all_args), env=self.get_docker_env())
 
     def __sudo(self):
         if self.__sudo_cache is None:
@@ -118,10 +119,10 @@ class SystemCallsBase(object):
             sys.stderr.write('Error running command: %s\n%s\n' % (str, e))
             raise
 
-    def exec(self, docker_client, container_id, args):
+    def docker_exec(self, docker_client, container_id, args):
         self.__print_cmd(args, 'exec')
-        exec = docker_client.exec_create(container_id, args)
-        for buf in docker_client.exec_start(exec['Id'], stream=True):
+        exe = docker_client.exec_create(container_id, args)
+        for buf in docker_client.exec_start(exe['Id'], stream=True):
             sys.stdout.write(buf.decode('utf-8'))
 
     @property
@@ -152,6 +153,9 @@ class SystemCallsBase(object):
             return s
 
         return ' '.join([q(s) for s in args])
+
+    def get_docker_env(self):
+        return None
 
 
 class Pexpect(pe_spawn):
@@ -187,8 +191,8 @@ class Pexpect(pe_spawn):
         def flush(self):
             sys.stdout.flush()
 
-    def __init__(self, cmd, ignores=('Password', 'Username'), stdout=True):
-        super(Pexpect, self).__init__(cmd)
+    def __init__(self, cmd, ignores=('Password', 'Username'), stdout=True, env=None):
+        super(Pexpect, self).__init__(cmd, env=env)
         self.logfile = self.Out(ignores, stdout)
 
     def expect(self, pattern, **kwargs):
@@ -198,4 +202,3 @@ class Pexpect(pe_spawn):
         i = super(Pexpect, self).expect(pattern, **kwargs)
 
         return i - 2
-
