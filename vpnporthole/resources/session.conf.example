@@ -29,17 +29,16 @@
         [[[domains]]]
             example.org = True
 
-        # Additional command line options you wish to pass to open-connect
-        [[[openconnect]]]
-            1 = -v
-            2 = --foo bla fish
+        # socks5: An optional extra to have your the session container expose a SOCKS5 port
+        [[[socks5]]]
+            port = 1080
 
         [[[dockerfile]]]
             # Custom lines you wish to add to the Docker file as system
             [[[[system]]]]
                 1 = RUN apt-get update && apt-get install -y wget expect && apt-get clean -y
-                2 = ADD setup.sh /home/user/
-                3 = ADD run.sh /home/user/
+                2 = ADD install.sh /home/user/
+                3 = ADD setup.sh /home/user/
 
             # Custom lines you wish to add to the Docker file as the user
             [[[[user]]]]
@@ -64,3 +63,9 @@
                     send "y\r"
                     EOF
                 '''
+
+        # Additional command line options you wish to pass to open-connect
+        [[[openconnect]]]
+            1 = -v
+            2 = --csd-user user
+            3 = --csd-wrapper ~/csd-wrapper.sh

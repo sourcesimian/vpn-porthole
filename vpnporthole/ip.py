@@ -38,7 +38,10 @@ class IPv4Subnet(object):
             self._ip = cidr._ip
             self._size = cidr._size
             return
-        base, size = cidr.split('/', 1)
+        if '/' not in cidr:
+            base, size = cidr, 32
+        else:
+            base, size = cidr.split('/', 1)
         self._size = int(size)
         base = self.__mask(IPv4Address(base).int, self._size)
         self._ip = IPv4Address(base)

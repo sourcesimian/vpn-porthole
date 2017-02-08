@@ -12,14 +12,11 @@
         [[[domains]]]
             ___many___ = boolean()
 
-        [[[docker]]]
-            machine = string(default='')
-
         [[[socks5]]]
             port = integer(default=0)
 
-        [[[openconnect]]]
-            ___many___ = string()
+        [[[docker]]]
+            machine = string(default='')
 
         [[[dockerfile]]]
             [[[[system]]]]
@@ -28,3 +25,6 @@
                 ___many___ = string()
             [[[[files]]]]
                 ___many___ = string()
+
+        [[[openconnect]]]
+            ___many___ = string()

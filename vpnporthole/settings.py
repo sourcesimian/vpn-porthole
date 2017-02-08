@@ -11,9 +11,9 @@ class Settings(object):
     __proxy = None
     __sudo_password = None
 
-    def __init__(self, session, config=None, proxy=None):
+    def __init__(self, session, proxy=None):
         self.__session_name = session
-        self.__settings = self.__get_settings(config)
+        self.__settings = self.__get_settings()
         try:
             self.__session = self.__settings['session'][session]
         except KeyError:
@@ -46,7 +46,11 @@ class Settings(object):
         return self.__proxy['http_proxy']
 
     def username(self):
-        return self.__extract(self.__session['username'])
+        usr = self.__extract(self.__session['username'])
+        if not usr:
+            # TODO: add prompting for username
+            pass
+        return usr
 
     def password(self):
         pwd = self.__session['password']
@@ -65,7 +69,7 @@ class Settings(object):
                 return self.__sudo_password
             import getpass
             pwd = getpass.getpass('Enter sudo password:')
-            self.__sudo_password = pwd
+            Settings.__sudo_password = pwd
         return self.__extract(pwd)
 
     def custom_files(self):
@@ -118,8 +122,8 @@ class Settings(object):
         return os.path.expanduser('~/.config/vpn-porthole')
 
     @classmethod
-    def list_sessions(cls, config_root):
-        settings = cls.__get_settings(config_root)
+    def list_sessions(cls):
+        settings = cls.__get_settings()
         return {p: v for p, v in settings['session'].items()}
 
     @classmethod
@@ -147,13 +151,9 @@ class Settings(object):
                 print("* Wrote: %s" % session)
 
     @classmethod
-    def __get_settings(cls, config_root):
-        if config_root is None:
-            cls.__ensure_config_setup()
-        else:
-            if os.path.isfile(config_root):
-                config_root = os.path.dirname(config_root)
-        config_root = config_root or cls.__default_settings_root()
+    def __get_settings(cls):
+        cls.__ensure_config_setup()
+        config_root = cls.__default_settings_root()
 
         settings_file = os.path.join(config_root, 'settings.conf')
         sessions_glob = os.path.join(config_root, 'sessions', '*.conf')

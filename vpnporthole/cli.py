@@ -11,7 +11,6 @@ class Main(ArgParseTree):
 
     """
     def args(self, parser):
-        parser.add_argument("--settings", default=None, help='Alternative settings file')
         parser.add_argument("--proxy", default=None, help="Selected proxy profile")
 
 
@@ -23,13 +22,13 @@ class Action(ArgParseTree):
 
     def run(self, args):
         if args.session == 'all':
-            sessions = Settings.list_sessions(args.settings)
+            sessions = Settings.list_sessions()
             for name in sorted(sessions.keys()):
-                self.settings = Settings(name, args.settings, args.proxy)
+                self.settings = Settings(name, args.proxy)
                 session = Session(self.settings)
                 self.go(session, args)
         else:
-            self.settings = Settings(args.session, args.settings, args.proxy)
+            self.settings = Settings(args.session, args.proxy)
             session = Session(self.settings)
             return self.go(session, args)
 
@@ -157,7 +156,7 @@ class DelRoute(RouteAction):
 class DomainAction(Action):
     def args(self, parser):
         super(DomainAction, self).args(parser)
-        parser.add_argument('domain')
+        parser.add_argument('domain', help="DNS sub-domain to delegate into the session, e.g.: example.com")
 
 
 class AddDomain(DomainAction):

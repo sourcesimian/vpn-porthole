@@ -48,13 +48,14 @@ class SystemCalls(SystemCallsBase):
         subnets = []
         if not self._ip:
             return []
-        for line in self.__host_ssh(['sudo', 'ip', 'route', 'show', 'via', self._ip]):
+        for line in self.__host_ssh(['ip', 'route', 'show', 'via', self._ip]):
             subnets.append(IPv4Subnet(line.split()[0]))
         return subnets
 
     def add_domain(self, domain):
         with tempfile.NamedTemporaryFile() as temp:
             temp.file.write(bytes('nameserver %s  # %s\n' % (self._ip, self._tag), 'utf-8'))
+            os.chmod(temp.name, 0o644)
             temp.file.flush()
             self._shell(['sudo', 'cp', temp.name, '/etc/resolver/%s' % domain])
             temp.close()
@@ -66,7 +67,7 @@ class SystemCalls(SystemCallsBase):
         domains = []
         all_files = glob.glob('/etc/resolver/*')
         if all_files:
-            for line in self._shell(['sudo', 'grep', '-l', self._tag] + all_files):
+            for line in self._shell(['grep', '-l', self._tag] + all_files):
                 domains.append(os.path.basename(line.strip()))
         return domains
 
