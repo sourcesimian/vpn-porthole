@@ -1,4 +1,5 @@
 import sys
+import re
 import subprocess
 
 from pexpect import spawn as pe_spawn, TIMEOUT, EOF
@@ -18,10 +19,10 @@ class SystemCallsBase(object):
     def container_ip(self, ip):
         self._ip = ip
 
-    def connect(self):
+    def on_connect(self):
         pass
 
-    def disconnect(self):
+    def on_disconnect(self):
         pass
 
     def add_route(self, subnet):
@@ -72,7 +73,9 @@ class SystemCallsBase(object):
 
     def docker_run_expect(self, image, args):
 
-        all_args = [self.docker_bin, 'run', '-it', '--rm', '--privileged', image]
+        all_args = [self.docker_bin, 'run', '-it', '--rm', '--privileged']
+        all_args.extend(self._settings.run_options())
+        all_args.extend([image])
         all_args.extend(args)
 
         self.__print_cmd(all_args)
@@ -109,7 +112,16 @@ class SystemCallsBase(object):
             break
         while len(pe.logfile.lines) and not pe.logfile.lines[0].strip():
             pe.logfile.lines = pe.logfile.lines[1:]
-        return pe.logfile.lines
+        pe.close()
+        return pe.exitstatus, pe.logfile.lines
+
+    def _shell_check(self, args):
+        exitstatus, lines = self._shell(args)
+        if exitstatus != 0:
+            sys.stderr.write("Error running %s\n" % ' '.join(args))
+            for line in lines:
+                sys.stderr.write("%s\n" % line)
+        return exitstatus, lines
 
     def _popen(self, args, *vargs, **kwargs):
         self.__print_cmd(args)
@@ -120,10 +132,21 @@ class SystemCallsBase(object):
             raise
 
     def docker_exec(self, docker_client, container_id, args):
-        self.__print_cmd(args, 'exec')
-        exe = docker_client.exec_create(container_id, args)
+        if not self._ip:
+            return None
+        full_args = ['/vpnp/exec']
+        full_args.extend(args)
+        self.__print_cmd(full_args, 'exec')
+        exe = docker_client.exec_create(container_id, full_args)
+        errcode = re.compile('/vpnp/exec:EXITCODE=(?P<code>\d+)\n', re.MULTILINE)
         for buf in docker_client.exec_start(exe['Id'], stream=True):
-            sys.stdout.write(buf.decode('utf-8'))
+            line = buf.decode('utf-8')
+            m = errcode.search(line)
+            line = errcode.sub(lambda a: '', line)
+            if m:
+                return int(m.group('code'))
+            sys.stdout.write(line)
+        return None
 
     @property
     def stdout(self):

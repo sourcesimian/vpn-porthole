@@ -11,7 +11,7 @@ class Main(ArgParseTree):
 
     """
     def args(self, parser):
-        parser.add_argument("--proxy", default=None, help="Selected proxy profile")
+        pass
 
 
 class Action(ArgParseTree):
@@ -22,13 +22,13 @@ class Action(ArgParseTree):
 
     def run(self, args):
         if args.session == 'all':
-            sessions = Settings.list_sessions()
-            for name in sorted(sessions.keys()):
-                self.settings = Settings(name, args.proxy)
+            sessions = Settings.list_session_names()
+            for name in sorted(sessions):
+                self.settings = Settings(name)
                 session = Session(self.settings)
                 self.go(session, args)
         else:
-            self.settings = Settings(args.session, args.proxy)
+            self.settings = Settings(args.session)
             session = Session(self.settings)
             return self.go(session, args)
 
@@ -76,13 +76,41 @@ class Status(Action):
     Determine if the docker container for this image is running
     """
     def go(self, session, args):
-        if session.status():
+        exitcode = session.status()
+        if exitcode == 0:
             status = 'RUNNING'
         else:
             status = 'STOPPED'
         sys.stdout.write("%s %s %s@%s\n" % (status, self.settings.session,
                                             self.settings.username(), self.settings.vpn()))
-        return status == 'RUNNING'
+        return exitcode
+
+
+class Health(Action):
+    """\
+    Session health
+
+    Run the user defined "health" hook inside the container
+    """
+    def go(self, session, args):
+        exitcode = session.health()
+        if exitcode == 0:
+            status = 'OK'
+        else:
+            status = 'BAD'
+        sys.stdout.write("%s %s %s@%s\n" % (status, self.settings.session,
+                                            self.settings.username(), self.settings.vpn()))
+        return exitcode
+
+
+class Refresh(Action):
+    """\
+    Session refresh
+
+    Run the user defined "refresh" hook inside the container
+    """
+    def go(self, session, args):
+        return session.refresh()
 
 
 class Shell(Action):
@@ -200,6 +228,8 @@ def main():
     Build(m)
     Start(m)
     Status(m)
+    Health(m)
+    Refresh(m)
     Stop(m)
     Restart(m)
     AddRoute(m)

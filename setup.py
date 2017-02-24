@@ -2,8 +2,8 @@ from setuptools import setup
 
 setup(
     name="vpn-porthole",
-    version="0.0.4",
-    download_url="https://github.com/sourcesimian/vpn-porthole/tarball/v0.0.4",
+    version="0.0.5",
+    download_url="https://github.com/sourcesimian/vpn-porthole/tarball/v0.0.5",
     url='https://github.com/sourcesimian/vpn-porthole',
     description="Splice VPN access into your default network space",
     author="Source Simian",
@@ -18,7 +18,8 @@ setup(
     install_requires=[
         'ConfigObj>=4.7.0',
         'pexpect',
-        'docker-py',
+        'docker==2.0.2',
+        'Tempita==0.5.2',
     ],
     package_data={
         'vpnporthole': ['resources/*'],

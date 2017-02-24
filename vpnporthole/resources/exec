@@ -1,0 +1,7 @@
+#!/bin/bash
+
+PREFIX=$(basename $1)
+"$@" 2>&1 | sed -e "s/^/ [$PREFIX] /"
+
+EXITCODE=${PIPESTATUS[0]}
+echo "/vpnp/exec:EXITCODE=$EXITCODE"

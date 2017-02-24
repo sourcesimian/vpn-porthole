@@ -16,28 +16,30 @@ class SystemCalls(SystemCallsBase):
         super(SystemCalls, self).__init__(*args, **kwargs)
         self.__docker_env = self.__get_docker_env()
 
-    def connect(self):
-        self.__host_ssh(['sudo', '/usr/local/sbin/iptables',
-                         '-t', 'nat',
-                         '-A', 'POSTROUTING',
-                         '-o', 'docker0',
-                         '-j', 'MASQUERADE'])
+    def on_connect(self):
+        self.__host_ssh_check(['sudo', '/usr/local/sbin/iptables',
+                               '-t', 'nat',
+                               '-A', 'POSTROUTING',
+                               '-o', 'docker0',
+                               '-j', 'MASQUERADE'])
 
-        self.__host_ssh(['sudo', '/usr/local/sbin/iptables',
-                         '-A', 'FORWARD',
-                         '-i', 'eth1',
-                         '-j', 'ACCEPT'])
+        self.__host_ssh_check(['sudo', '/usr/local/sbin/iptables',
+                               '-A', 'FORWARD',
+                               '-i', 'eth1',
+                               '-j', 'ACCEPT'])
 
-        self._shell(['sudo', 'route', '-n', 'add', '%s/32' % self._ip, self.__host_ip()])
+        if self._ip:
+            self._shell(['sudo', 'route', '-n', 'add', '%s/32' % self._ip, self.__host_ip()])
 
-    def disconnect(self):
+    def on_disconnect(self):
         if self._ip:
             self._shell(['sudo', 'route', '-n', 'delete', '%s/32' % self._ip, self.__host_ip()])
 
     def add_route(self, subnet):
-        self.__host_ssh(['sudo', 'ip', 'route', 'add', str(subnet), 'via', self._ip])
+        if self._ip:
+            self.__host_ssh_check(['sudo', 'ip', 'route', 'add', str(subnet), 'via', self._ip])
 
-        self._shell(['sudo', 'route', '-n', 'add', str(subnet), self.__host_ip()])
+        self._shell_check(['sudo', 'route', '-n', 'add', str(subnet), self.__host_ip()])
 
     def del_route(self, subnet):
         self._shell(['sudo', 'route', '-n', 'delete', str(subnet)])
@@ -48,16 +50,19 @@ class SystemCalls(SystemCallsBase):
         subnets = []
         if not self._ip:
             return []
-        for line in self.__host_ssh(['ip', 'route', 'show', 'via', self._ip]):
+        _, lines = self.__host_ssh(['ip', 'route', 'show', 'via', self._ip])
+        for line in lines:
             subnets.append(IPv4Subnet(line.split()[0]))
         return subnets
 
     def add_domain(self, domain):
+        if not self._ip:
+            return
         with tempfile.NamedTemporaryFile() as temp:
             temp.file.write(bytes('nameserver %s  # %s\n' % (self._ip, self._tag), 'utf-8'))
             os.chmod(temp.name, 0o644)
             temp.file.flush()
-            self._shell(['sudo', 'cp', temp.name, '/etc/resolver/%s' % domain])
+            self._shell_check(['sudo', 'cp', temp.name, '/etc/resolver/%s' % domain])
             temp.close()
 
     def del_domain(self, domain):
@@ -67,7 +72,7 @@ class SystemCalls(SystemCallsBase):
         domains = []
         all_files = glob.glob('/etc/resolver/*')
         if all_files:
-            for line in self._shell(['grep', '-l', self._tag] + all_files):
+            for line in self._shell(['grep', '-l', self._tag] + all_files)[1]:
                 domains.append(os.path.basename(line.strip()))
         return domains
 
@@ -75,6 +80,11 @@ class SystemCalls(SystemCallsBase):
         base = ['docker-machine', 'ssh', self.__docker_env['DOCKER_MACHINE_NAME']]
         base.extend(args)
         return self._shell(base)
+
+    def __host_ssh_check(self, args):
+        base = ['docker-machine', 'ssh', self.__docker_env['DOCKER_MACHINE_NAME']]
+        base.extend(args)
+        return self._shell_check(base)
 
     def __host_ip(self):
         if self.__host_ip_cache:
