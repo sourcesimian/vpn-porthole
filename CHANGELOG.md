@@ -1,14 +1,15 @@
 # vpn-porthole - CHANGELOG
 
-## [Unreleased] - CCYY-MM-DD
+## [0.0.5] - 2017-02-27
 ### Changed
-- Session config file format to allow templatable free form Dockerfile definition
+- Profile file format to allow templatable free form Dockerfile definition.
 - Dependency: "docker-py" replaced with "docker".
+- Folder: `~/.config/vpnp-porthole/sessions` to `~/.config/vpnp-porthole/profiles`
 
 ### Added
-- Hook scripts
-- Dependency: "Tempita"
-- Shell commands output to stdout it they fail
+- Hook scripts.
+- Dependency: "Tempita".
+- Shell commands output to stdout it they fail.
 
 ### Removed
-- Proxy support, this can now be done in the session config
+- Proxy support, this can now be done in the profile config.

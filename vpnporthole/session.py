@@ -19,7 +19,7 @@ class Session(object):
         return os.environ['USER']
 
     def _name(self):
-        return "vpnp/%s_%s" % (self.__settings.session, self.__settings.ctx.local.user.name,)
+        return "vpnp/%s_%s" % (self.__settings.profile_name, self.__settings.ctx.local.user.name,)
 
     def build(self):
         name = self._name()
@@ -53,18 +53,17 @@ class Session(object):
                     exit(3)
             # image = block['stream'].split()[2]
             print("Name: %s" % name)
-            # return image
+            return True
 
     def start(self):
-        ret = self.run()
-        if ret != 0:
-            return ret
-        self.local_up()
+        if self.run():
+            return self.local_up()
+        return False
 
     def run(self):
         if self.status():
             self.__sc.stderr.write("Already running\n")
-            return 3
+            return False
 
         if not self._images():
             self.build()
@@ -77,11 +76,11 @@ class Session(object):
         self._container()
         if not self.__ip:
             self.__sc.stderr.write("Failed to start\n")
-            return 3
+            return False
 
         self._container_hook('up')
         self.__sc.on_connect()
-        return 0
+        return True
 
     def local_up(self):
         self._container()
@@ -90,11 +89,13 @@ class Session(object):
 
         for domain in self.__settings.domains():
             self.__sc.add_domain(domain)
+        return True
 
     def add_route(self, subnet):
         subnet = IPv4Subnet(subnet)
         self._container()
         self.__sc.add_route(subnet)
+        return True
 
     def del_route(self, subnet):
         subnet = IPv4Subnet(subnet)
@@ -102,29 +103,24 @@ class Session(object):
         for sn in self.__sc.list_routes():
             if sn in subnet:
                 self.__sc.del_route(sn)
+        return True
 
     def add_domain(self, domain):
         self._container()
         self.__sc.add_domain(domain)
+        return True
 
     def del_domain(self, domain):
         self._container()
         domains = self.__sc.list_domains()
         if domain in domains:
             self.__sc.del_domain(domain)
+        return True
 
     def status(self):
         if self._container():
             return True
         return False
-
-    def health(self):
-        if self._container():
-            return self._container_hook('health')
-
-    def refresh(self):
-        if self._container():
-            return self._container_hook('refresh')
 
     def stop(self):
         self.local_down()
@@ -141,24 +137,28 @@ class Session(object):
         not_running = [c['Id'] for c in self._containers() if c['State'] != 'running']
         for id in not_running:
             self.__dc.remove_container(id)
+        return True
 
     def local_down(self):
         self._container()
         self.__sc.del_all_domains()
         self.__sc.del_all_routes(self.__settings.subnets())
         self.__sc.on_disconnect()
+        return True
 
     def purge(self):
         self.stop()
         for image in self._images():
             self.__dc.remove_image(image, force=True)
+        return True
 
     def shell(self):
         container = self._container()
         if not container:
-            return
+            return False
 
         self.__sc.docker_shell(container['Id'])
+        return True
 
     def info(self):
         for image in self._images():
@@ -167,7 +167,7 @@ class Session(object):
                                               image['Size'] / 1024 / 1024,))
         container = self._container()
         if self.__ip is None:
-            return 0
+            return True
         print('Container: %s\t%s\t%s' % (container['Image'],
                                          container['State'],
                                          container['Id'][7:19],))
@@ -179,6 +179,7 @@ class Session(object):
             domains = self.__sc.list_domains()
             for domain in domains:
                 print('Domain: %s' % domain)
+        return True
 
     def _images(self):
         tag = self._name()
@@ -245,7 +246,18 @@ class Session(object):
                 pe.wait()
                 self.__sc.stderr.write('%s\n' % e)
                 raise
+            return 0
         else:
             container = self._container()
             if container:
                 return self.__sc.docker_exec(self.__dc, container['Id'], ['/vpnp/%s' % hook])
+
+    def health(self):
+        if self._container():
+            return self._container_hook('health')
+        return 127  # "command not found"
+
+    def refresh(self):
+        if self._container():
+            return self._container_hook('refresh')
+        return 127  # "command not found"

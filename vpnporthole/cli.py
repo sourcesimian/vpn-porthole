@@ -18,17 +18,17 @@ class Action(ArgParseTree):
     settings = None
 
     def args(self, parser):
-        parser.add_argument("session", help='Session name or "all"')
+        parser.add_argument("profile", help='Profile name or "all"')
 
     def run(self, args):
-        if args.session == 'all':
-            sessions = Settings.list_session_names()
-            for name in sorted(sessions):
-                self.settings = Settings(name)
+        if args.profile == 'all':
+            profile_names = Settings.list_profile_names()
+            for profile_name in sorted(profile_names):
+                self.settings = Settings(profile_name)
                 session = Session(self.settings)
                 self.go(session, args)
         else:
-            self.settings = Settings(args.session)
+            self.settings = Settings(args.profile)
             session = Session(self.settings)
             return self.go(session, args)
 
@@ -38,57 +38,64 @@ class Action(ArgParseTree):
 
 class Build(Action):
     """\
-    Build session
+    Build profile
 
-    Build the docker image for this session
+    Build the docker image for this profile
     """
     def go(self, session, args):
-        return session.build()
+        if session.build():
+            return 0
+        return 1
 
 
 class Start(Action):
     """\
-    Start session
+    Start profile
 
-    Start the docker container for this session, requires user to enter password none configured
+    Start the docker container for this profile, requires user to enter password none configured
     """
     def go(self, session, args):
         try:
-            return session.start()
+            if session.start():
+                return 0
+            return 1
         except KeyboardInterrupt:
             return 1
 
 
 class Stop(Action):
     """\
-    Stop session
+    Stop profile
 
-    Stop the docker container for this session
+    Stop the docker container for this profile
     """
     def go(self, session, args):
-        return session.stop()
+        if session.stop():
+            return 0
+        return 1
 
 
 class Status(Action):
     """\
-    Session status
+    Profile status
 
     Determine if the docker container for this image is running
     """
     def go(self, session, args):
-        exitcode = session.status()
-        if exitcode == 0:
+        if session.status():
             status = 'RUNNING'
+            exitcode = 0
         else:
             status = 'STOPPED'
-        sys.stdout.write("%s %s %s@%s\n" % (status, self.settings.session,
+            exitcode = 1
+        sys.stdout.write("%s %s %s@%s\n" % (status, self.settings.profile_name,
                                             self.settings.username(), self.settings.vpn()))
         return exitcode
 
 
 class Health(Action):
     """\
-    Session health
+    Profile health
 
     Run the user defined "health" hook inside the container
     """
@@ -98,59 +105,71 @@ class Health(Action):
             status = 'OK'
         else:
             status = 'BAD'
-        sys.stdout.write("%s %s %s@%s\n" % (status, self.settings.session,
+        sys.stdout.write("%s %s %s@%s\n" % (status, self.settings.profile_name,
                                             self.settings.username(), self.settings.vpn()))
         return exitcode
 
 
 class Refresh(Action):
     """\
-    Session refresh
+    Profile refresh
 
     Run the user defined "refresh" hook inside the container
     """
     def go(self, session, args):
-        return session.refresh()
+        exitcode = session.health()
+        return exitcode
 
 
 class Shell(Action):
     """\
-    Shell into active session
+    Shell into active profile
 
     Open shell in Docker container
     """
     def go(self, session, args):
-        return session.shell()
+        if session.shell():
+            return 0
+        return 1
 
 
 class Info(Action):
     """\
-    Docker container info for session
+    Docker container info for profile
     """
     def go(self, session, args):
-        return session.info()
+        if session.info():
+            return 0
+        return 1
 
 
 class Rm(Action):
     """\
-    Stop the session, and remove the docker container
+    Stop the profile, and remove the docker container
 
-    Remove any running/stopped containers and images for this session
+    Remove any running/stopped containers and images for this profile
     """
     def go(self, session, args):
-        return session.purge()
+        if session.purge():
+            return 0
+        return 1
 
 
 class Restart(Action):
     """\
-    Restart session
+    Restart profile
 
-    Restart Docker container for this session
+    Restart Docker container for this profile
     """
     def go(self, session, args):
         if session.status():
-            session.stop()
-            return session.start()
+            if not session.stop():
+                sys.stderr.write("Failed to stop!\n")
+                return 1
+            if session.start():
+                return 0
+            sys.stderr.write("Failed to start!\n")
+            return 1
         sys.stderr.write("Not running!\n")
         return 1
 
@@ -158,53 +177,61 @@ class Restart(Action):
 class RouteAction(Action):
     def args(self, parser):
         super(RouteAction, self).args(parser)
-        parser.add_argument('subnet', help="IPv4 subnet to route into session, e.g.: 10.1.2.0/24")
+        parser.add_argument('subnet', help="IPv4 subnet to route into active profile, e.g.: 10.1.2.0/24")
 
 
 class AddRoute(RouteAction):
     """\
-    Add route to session
+    Add route to active profile
     """
     name = 'add-route'
 
     def go(self, session, args):
-        return session.add_route(args.subnet)
+        if session.add_route(args.subnet):
+            return 0
+        return 1
 
 
 class DelRoute(RouteAction):
     """\
-    Delete route from session
+    Remove route to active profile
     """
     name = 'del-route'
 
     def go(self, session, args):
-        return session.del_route(args.subnet)
+        if session.del_route(args.subnet):
+            return 0
+        return 1
 
 
 class DomainAction(Action):
     def args(self, parser):
         super(DomainAction, self).args(parser)
-        parser.add_argument('domain', help="DNS sub-domain to delegate into the session, e.g.: example.com")
+        parser.add_argument('domain', help="DNS sub-domain to delegate into the  active profile, e.g.: example.com")
 
 
 class AddDomain(DomainAction):
     """\
-    Add DNS domain to session
+    Add DNS domain to active profile
     """
     name = 'add-domain'
 
     def go(self, session, args):
-        return session.add_domain(args.domain)
+        if session.add_domain(args.domain):
+            return 0
+        return 1
 
 
 class DelDomain(DomainAction):
     """\
-    Delete DNS domain from session
+    Remove DNS domain to active profile
     """
     name = 'del-domain'
 
     def go(self, session, args):
-        return session.del_domain(args.domain)
+        if session.del_domain(args.domain):
+            return 0
+        return 1
 
 
 class Docs(ArgParseTree):

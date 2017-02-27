@@ -54,11 +54,6 @@ class SystemCallsBase(object):
         for domain in domains:
             self.del_domain(domain)
 
-    # def _local_cmd(self, args):
-    #     p = self._popen(args, stdout=subprocess.PIPE)
-    #     p.wait()
-    #     return p.stdout.readlines()
-
     @property
     def docker_bin(self):
         if self.__docker_bin:

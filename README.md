@@ -1,4 +1,4 @@
-[[CHANGELOG](/CHANGELOG.md)]
+[[CHANGELOG](/CHANGELOG.md)] [[PROFILES](/PROFILES.md)]
 
 # vpn-porthole
 Splice in connectivity to one or more VPNs without interrupting existing connections, or altering your default networking.
@@ -28,9 +28,10 @@ pip3 install https://github.com/sourcesimian/vpn-porthole/tarball/master#egg=vpn
 ```
 
 Then:
+
 * Run `vpnp status all` to auto generate a default settings files.
 * Edit `~/.config/vpn-porthole/settings.conf`
-* Copy and modify: `~/.config/vpn-porthole/sessions/example.conf` to setup your sessions.
+* Copy and modify: `~/.config/vpn-porthole/profiles/example.conf` to setup your sessions.
 * See [Configuration](#configuration) below for more details.
 
 ## Supported Platforms
@@ -69,7 +70,7 @@ System settings are in: `~/.config/vpn-porthole/settings.conf`.
 ```
 [system]
     # sudo: (optional) vpn-porthole needs to make use of sudo privileges to setup and tear down
-    # subnets and DNS domains. Can be configured with `SHELL:` as for password in a session.
+    # subnets and DNS domains. Can be configured with `SHELL:` as for password in a profile.
     sudo =
 
 [docker]
@@ -79,11 +80,12 @@ System settings are in: `~/.config/vpn-porthole/settings.conf`.
     machine = default
 ```
 
-### Sessions
-Sessions are described in: `~/.config/vpn-porthole/sessions/<name>.conf`.
+### Profiles
+Profiles are in: `~/.config/vpn-porthole/profiles/<name>.conf`. An "example" profile
+will be installed by default. The basic profile structure is as follows.
 
-#### Basic
-Here is an full example of a basic session config:
+For more details on creating your
+own custom and advanced profile see: [PROFILES](/PROFILES.md).
 
 ```
 # vpn: the endpoint at which the VPN is contacted
@@ -100,25 +102,26 @@ username = joe
 #   Ubuntu: http://manpages.ubuntu.com/manpages/wily/man1/secret-tool.1.html
 password = SHELL:~/path/to/password/script
 
-# subnets: Add the IP address ranges that you wish to route into the VPN session
+# subnets: The IP address ranges that you wish to route into the VPN session
 [[[subnets]]]
     10.11.0.0/28 = True
     10.12.13.0/24 = True
 
-# domains: Add the DNS domains for which you wish to forward DNS lookups into the
+# domains: The DNS domains for which you wish to forward DNS lookups into the
 [[[domains]]]
     example.org = True
 
 # build: Describe how to build your Docker image.
-# User defined `options` can also be added to the Tempita context (e.g. `{{option.proxy}}`).
 [[[build]]]
+    # options: Additional user defined values can be added to the Tempita context
+    # (e.g. `{{option.proxy}}`).
     [[[options]]]
         proxy = proxy.example.com:80
 
-    # files: must include at least a mention of a Dockerfile. Other user files can
-    # be added to the Docker build context either by path (e.g.: foo.sh) or content
-    # (e.g.: bar.sh). Files names that end in `.tmpl` will be rendered with Tempita
-    # and provided without the `.tmpl` extension.
+    # files: Files that are included in the Docker build context (must at least include
+    # Dockerfile). Files can be added by path (see foo.sh) or content (see bar.sh).
+    # Files can be templated with the Tempita context including the above options by
+    # appending `.tmpl` to the file name (e.g.: `{{local.user.name}}`).
     [[[[files]]]]
         Dockerfile.tmpl = '''
             FROM debian
@@ -130,54 +133,45 @@ password = SHELL:~/path/to/password/script
              apt-get autoremove -y &&\
              apt-get clean -y
 
-            RUN echo -e "\\ninterface=eth0\\nuser=root\\n" >> /etc/dnsmasq.conf
+            ...
 
-            RUN groupadd --gid {{local.user.gid}} {{local.user.group}} || true &&\
-              useradd -ms /bin/bash {{local.user.name}} --uid {{local.user.uid}} --gid {{local.user.gid}}
-            RUN echo "{{local.user.name}} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/90-{{local.user.name}}
-
-            {{vpnp.hooks}}
+            {{vpnp.hooks}}  # This must be included
 
             USER {{local.user.name}}
+
+            ADD foo.sh /home/user/
+            ADD bar.sh /home/user/
         '''
 
-        # And example of a user defined file added to the build context by path
+        # A user defined file added to the build context by path
         foo.sh = ~/.config/vpn-porthole/example/install.sh
 
-        # And example of a user defined file added to the build context by content
+        # A user defined file added to the build context by content
         bar.sh = '''
             #!/bin/bash
 
             wget ...
-
-            /usr/bin/expect <<EOF
-            spawn ./install.sh
-            expect {
-             " Do you wish to continue (y/n)?"
-            }
-            send "y\r"
-            EOF
         '''
 
-# run: Define the run time behaviour of the docker container.
+# run: Define the behaviour of the docker container.
 [run]
     # options: are included in the `docker run` command line.
     [[options]]
         1 = --volume /tmp:/tmp
 
-    # hooks: Are scripts that vpn-porthole runs to control the container. They are
-    # rendered with Tempita and written to /vpnp/ in the image.
-    # It is important to include `{{vpnp.hooks}}` somewhere in the Dockerfile above so
-    # that the hooks get installed.
+    # hooks: Scripts that vpn-porthole runs to control the container. They are
+    # templated with Tempita and written to /vpnp/ in the image.
+    # It is important to include `{{vpnp.hooks}}` in the Dockerfile above so that
+    # the hooks get installed.
     [[hooks]]
-        # /vpnp/start: is called with `docker run`
+        # start: called with `docker run`
         start = '''
             #!/bin/bash
             set -e -v
             sudo openconnect {{vpn.addr}} --interface tun1
         '''
 
-        # /vpnp/up: is called with `docker exec` once `/vpnp/start` has established a connection
+        # up: (optional) called with `docker exec` once `start` has established a connection
         up = '''
             #!/bin/bash
             set -e -v
@@ -185,9 +179,23 @@ password = SHELL:~/path/to/password/script
             sudo /etc/init.d/dnsmasq start
         '''
 
-        # /vpnp/stop: is called with `docker exec` before the container is torn down
+        # stop: (optional) is called with `docker exec` before the container is torn down
         stop = '''
             #!/bin/bash
             sudo pkill openconnect
+        '''
+
+        # health: (optional) is called by `vpnp health <profile>` with `docker exec`, the
+        # exitcode is returned to the user
+        health = '''
+            #!/bin/bash
+            ping -c 1 -w 1 {{option.health_ip}} &> /dev/null
+        '''
+
+        # refresh: (optional) is called by `vpnp refresh <profile>` with `docker exec`, the
+        # exitcode is returned to the user
+        refresh = '''
+            #!/bin/bash
+            ... some magic to keep the connection open
         '''
 ```

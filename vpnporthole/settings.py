@@ -11,21 +11,21 @@ class Settings(object):
     __sudo_password = None
     __ctx = None
 
-    def __init__(self, session):
-        self.__session_name = session
+    def __init__(self, profile_name):
+        self.__profile_name = profile_name
         self.__ensure_config_setup()
         self.__settings = self.__get_settings()
-        self.__session = self.__get_session(session)
-        if not self.__settings or not self.__session:
+        self.__profile = self.__get_profile(profile_name)
+        if not self.__settings or not self.__profile:
             exit(3)
 
     @property
-    def session(self):
-        return self.__session_name
+    def profile_name(self):
+        return self.__profile_name
 
     @property
     def docker_machine(self):
-        machine = self.__session['docker']['machine']
+        machine = self.__profile['docker']['machine']
         if machine:
             return machine
         machine = self.__settings['docker']['machine']
@@ -34,13 +34,13 @@ class Settings(object):
         return None
 
     def username(self):
-        usr = self.__extract(self.__session['username'])
+        usr = self.__extract(self.__profile['username'])
         if not usr:
             usr = input("")
         return usr
 
     def password(self):
-        pwd = self.__extract(self.__session['password'])
+        pwd = self.__extract(self.__profile['password'])
         if not pwd:
             import getpass
             pwd = getpass.getpass('')
@@ -61,7 +61,7 @@ class Settings(object):
 
     def build_files(self):
         ret = {}
-        for filename, content in self.__session['build']['files'].iteritems():
+        for filename, content in self.__profile['build']['files'].iteritems():
             if content:
                 content = self.__file_content(content)
                 if filename.endswith('.tmpl'):
@@ -72,7 +72,7 @@ class Settings(object):
 
     def run_hook_files(self):
         ret = {}
-        for filename, content in self.__session['run']['hooks'].iteritems():
+        for filename, content in self.__profile['run']['hooks'].iteritems():
             if content:
                 content = self.__file_content(content)
                 content = self.__render_template(content)
@@ -99,15 +99,15 @@ class Settings(object):
 
     def build_options(self):
         ret = {}
-        for k, v in self.__session['build']['options'].iteritems():
+        for k, v in self.__profile['build']['options'].iteritems():
             if v:
                 ret[k] = self.__extract(v)
         return ret
 
     def run_options(self):
         args = []
-        for key in sorted(self.__session['run']['options'].keys()):
-            value = self.__session['run']['options'][key]
+        for key in sorted(self.__profile['run']['options'].keys()):
+            value = self.__profile['run']['options'][key]
             args.extend(value.split(' ', 1))
         return args
 
@@ -118,16 +118,16 @@ class Settings(object):
         return value
 
     def vpn(self):
-        return self.__session['vpn']
+        return self.__profile['vpn']
 
     def subnets(self):
         return [IPv4Subnet(k)
-                for k, v in self.__session['subnets'].items()
+                for k, v in self.__profile['subnets'].items()
                 if v is True]
 
     def domains(self):
         return [k
-                for k, v in self.__session['domains'].items()
+                for k, v in self.__profile['domains'].items()
                 if v is True]
 
     @property
@@ -185,23 +185,23 @@ class Settings(object):
         if not os.path.exists(root):
             os.makedirs(root)
 
-        settings = os.path.join(root, 'settings.conf')
-        if not os.path.exists(settings):
-            with open(settings, 'w+b') as fh:
+        settings_file = os.path.join(root, 'settings.conf')
+        if not os.path.exists(settings_file):
+            with open(settings_file, 'w+b') as fh:
                 content = resource_stream("vpnporthole", "resources/settings.conf").read()
                 fh.write(content)
-            print("* Wrote: %s" % settings)
+            print("* Wrote: %s" % settings_file)
 
-        root = os.path.join(root, 'sessions')
+        root = os.path.join(root, 'profiles')
         if not os.path.exists(root):
             os.makedirs(root)
 
-            session = os.path.join(root, 'example.conf')
-            if not os.path.exists(session):
-                with open(session, 'w+b') as fh:
+            profile_file = os.path.join(root, 'example.conf')
+            if not os.path.exists(profile_file):
+                with open(profile_file, 'w+b') as fh:
                     content = resource_stream("vpnporthole", "resources/example.conf").read()
                     fh.write(content)
-                print("* Wrote: %s" % session)
+                print("* Wrote: %s" % profile_file)
 
     @classmethod
     def __get_settings(cls):
@@ -216,26 +216,26 @@ class Settings(object):
         return settings
 
     @classmethod
-    def __get_session(cls, name):
+    def __get_profile(cls, name):
         config_root = cls.__default_settings_root()
 
         if name in ('all',):
-            sys.stderr.write('! Invalid session name "%s"\n' % name)
+            sys.stderr.write('! Invalid profile name "%s"\n' % name)
             exit(1)
 
-        session_file = os.path.join(config_root, 'sessions', '%s.conf' % name)
-        session_spec_lines = resource_stream("vpnporthole", "resources/session.spec").readlines()
+        session_file = os.path.join(config_root, 'profiles', '%s.conf' % name)
+        session_spec_lines = resource_stream("vpnporthole", "resources/profile.spec").readlines()
 
-        session = cls.__load_configobj(session_file, session_spec_lines)
+        profile = cls.__load_configobj(session_file, session_spec_lines)
 
-        return session
+        return profile
 
     @classmethod
-    def list_session_names(cls):
+    def list_profile_names(cls):
         names = []
 
         config_root = cls.__default_settings_root()
-        sessions_glob = os.path.join(config_root, 'sessions', '*.conf')
+        sessions_glob = os.path.join(config_root, 'profiles', '*.conf')
 
         from glob import glob
         for session_file in glob(sessions_glob):
