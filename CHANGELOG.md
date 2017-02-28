@@ -1,6 +1,6 @@
 # vpn-porthole - CHANGELOG
 
-## [0.0.5] - 2017-02-27
+## [0.0.6] - 2017-02-28
 ### Changed
 - Profile file format to allow templatable free form Dockerfile definition.
 - Dependency: "docker-py" replaced with "docker".
