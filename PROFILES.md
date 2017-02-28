@@ -12,7 +12,7 @@ The following examples will hopefully help you in building your custom profile.
 
 ### Basic
 A basic profile called "example" is installed by default. You will find it here:
-[`~/.config/vpn-porthole/profiles/example.conf`](/resources/example.conf). It shows usage of
+[`~/.config/vpn-porthole/profiles/example.conf`](/vpnporthole/resources/example.conf). It shows usage of
 Dockerfile templating, start, up and stop hooks, subnets and domains. Which can be sufficient
 to build a working vpn-porthole profile.
 

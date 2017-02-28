@@ -29,7 +29,7 @@ pip3 install https://github.com/sourcesimian/vpn-porthole/tarball/master#egg=vpn
 
 Then:
 
-* Run `vpnp status all` to auto generate a default settings files.
+* Run `vpnp status example` to auto generate a default settings files.
 * Edit `~/.config/vpn-porthole/settings.conf`
 * Copy and modify: `~/.config/vpn-porthole/profiles/example.conf` to setup your sessions.
 * See [Configuration](#configuration) below for more details.
