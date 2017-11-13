@@ -2,8 +2,8 @@ from setuptools import setup
 
 setup(
     name="vpn-porthole",
-    version="0.0.6",
-    download_url="https://github.com/sourcesimian/vpn-porthole/tarball/v0.0.6",
+    version="0.0.7",
+    download_url="https://github.com/sourcesimian/vpn-porthole/tarball/v0.0.7",
     url='https://github.com/sourcesimian/vpn-porthole',
     description="Splice VPN access into your default network space",
     author="Source Simian",

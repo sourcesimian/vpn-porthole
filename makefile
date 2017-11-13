@@ -27,7 +27,7 @@ clean:
 	rm -rf htmlcov
 
 
-analyse:
+check:
 	find vpnporthole -name '*.py' | xargs pep8 --ignore E501
 	find vpnporthole -name '*.py' | xargs pyflakes
 	find vpnporthole -name '*.py' | xargs pylint -d invalid-name -d locally-disabled -d missing-docstring -d too-few-public-methods -d protected-access
@@ -41,6 +41,9 @@ metrics:
 to_pypi_test:
 	python setup.py register -r pypitest
 	python setup.py sdist upload -r pypitest
+
+	# To test:
+	# $ pip install -i https://testpypi.python.org/pypi vpn-porthole
 
 
 to_pypi_live:

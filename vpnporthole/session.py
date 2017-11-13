@@ -185,7 +185,14 @@ class Session(object):
         tag = self._name()
         all_images = self.__dc.images()
 
-        return [i for i in all_images if any([True for t in i['RepoTags'] if t.startswith(tag)])]
+        filtered_images = []
+        for image in all_images:
+            tags = image['RepoTags']
+            if tags:
+                if any([True for t in tags if t.startswith(tag)]):
+                    filtered_images.append(image)
+
+        return filtered_images
 
     def _containers(self):
         name = self._name()

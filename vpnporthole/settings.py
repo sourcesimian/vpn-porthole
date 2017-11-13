@@ -165,6 +165,7 @@ class Settings(object):
                     ADD vpnp/ /vpnp/
                     RUN sudo chmod +x /vpnp/*
             ''')
+
             ctx = dotdict()
             ctx.local = local
             ctx.vpn = vpn

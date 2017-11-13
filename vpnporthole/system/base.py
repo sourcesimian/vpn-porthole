@@ -1,3 +1,4 @@
+import os
 import sys
 import re
 import subprocess
@@ -69,7 +70,7 @@ class SystemCallsBase(object):
     def docker_run_expect(self, image, args):
 
         all_args = [self.docker_bin, 'run', '-it', '--rm', '--privileged']
-        all_args.extend(self._settings.run_options())
+        all_args.extend([os.path.expanduser(os.path.expandvars(o)) for o in self._settings.run_options()])
         all_args.extend([image])
         all_args.extend(args)
 
@@ -113,7 +114,7 @@ class SystemCallsBase(object):
     def _shell_check(self, args):
         exitstatus, lines = self._shell(args)
         if exitstatus != 0:
-            sys.stderr.write("Error running %s\n" % ' '.join(args))
+            sys.stderr.write("Error running: %s\n" % ' '.join(args))
             for line in lines:
                 sys.stderr.write("%s\n" % line)
         return exitstatus, lines
@@ -123,7 +124,7 @@ class SystemCallsBase(object):
         try:
             return subprocess.Popen(args, *vargs, **kwargs)
         except IOError as e:
-            sys.stderr.write('Error running command: %s\n%s\n' % (str, e))
+            sys.stderr.write('Error running: %s\n%s\n' % (' '.join(args), e))
             raise
 
     def docker_exec(self, docker_client, container_id, args):
@@ -217,6 +218,8 @@ class Pexpect(pe_spawn):
         pattern.insert(0, EOF)
         pattern.insert(1, TIMEOUT)
 
+        if 'timeout' not in kwargs:
+            kwargs['timeout'] = 99  # Don't wait forever
         i = super(Pexpect, self).expect(pattern, **kwargs)
 
         return i - 2

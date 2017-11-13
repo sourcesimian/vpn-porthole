@@ -75,7 +75,7 @@ System settings are in: `~/.config/vpn-porthole/settings.conf`.
 
 [docker]
     # docker.machine: (optional) [OSX] Can be configured to connect to a specific docker
-    # machine. If left blank, the DOCKER_* settings will be fetch from the environment.
+    # machine. If left blank, the DOCKER_* settings will be fetched from the environment.
     # Note: vpn-porthole only works with Docker Toolbox and VirtualBox on OSX.
     machine = default
 ```

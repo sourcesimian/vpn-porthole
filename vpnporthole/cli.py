@@ -117,7 +117,7 @@ class Refresh(Action):
     Run the user defined "refresh" hook inside the container
     """
     def go(self, session, args):
-        exitcode = session.health()
+        exitcode = session.refresh()
         return exitcode
 
 
