@@ -176,8 +176,10 @@ the `start` hook to look like:
 
 ### Cisco Hostscan Stubbed
 Interestingly, if you happen to know exactly what to submit to the VPN entrypoint it is
-possible to satisfy the check without needing to install or run the Cisco Hostscan software. The
-example fragments below may help you achieve this.
+possible to satisfy the check without needing to install or run the Cisco Hostscan software. 
+If you don't know, it is possible to find out using
+[Hostscan Bypass](https://gilks.github.io/post/cisco-hostscan-bypass/). The example fragments below
+will help you achieve this.
 
 _CAUTION: in using this technique you will most likely contravene the usage policy for the VPN endpoint._
 

@@ -4,7 +4,7 @@ develop:
 	{ \
 		set -e; \
 		. ./virtualenv/bin/activate; \
-		wget -c -N https://bootstrap.pypa.io/get-pip.py -P virtualenv/bin/; \
+		curl -o virtualenv/bin/get-pip.py https://bootstrap.pypa.io/get-pip.py; \
 		python3 ./virtualenv/bin/get-pip.py; \
 		pip3 install pep8 pyflakes pylint nose coverage radon; \
 		python3 setup.py develop; \
